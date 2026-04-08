@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>视频库</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,sans-serif}
+  body{background:#f5f7fa;padding:20px}
+  .container{max-width:1600px;margin:0 auto}
+
+  .header{
+    display:flex;justify-content:space-between;align-items:center;
+    margin-bottom:16px;
+  }
+  .total-count{
+    font-size:14px;color:#666;background:#fff;
+    padding:6px 12px;border-radius:8px;border:1px solid #eee;
+  }
+
+  .top-bar{
+    display:flex;gap:16px;align-items:center;margin-bottom:16px;flex-wrap:wrap;
+  }
+  .search-box{flex:1;min-width:280px}
+  .search-input{
+    width:100%;padding:10px 14px;border:1px solid #ddd;border-radius:10px;font-size:14px;outline:none;
+  }
+  .search-input:focus{border-color:#4096ff}
+
+  .filter-bar{display:flex;gap:8px;flex-wrap:wrap}
+  .filter-btn{
+    padding:8px 12px;border:1px solid #ddd;background:#fff;border-radius:8px;cursor:pointer;font-size:14px;transition:0.2s;
+  }
+  .filter-btn:hover{background:#f0f0f0}
+  .filter-btn.active{background:#4096ff;color:#fff;border-color:#4096ff}
+
+  .video-grid{
+    display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:20px;
+  }
+  .video-card{
+    background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.05);
+    height:100%;display:flex;flex-direction:column;
+  }
+  .cover-box{position:relative;width:100%;aspect-ratio:16/9;background:#eee}
+  .cover{width:100%;height:100%;object-fit:cover}
+  .duration{
+    position:absolute;right:8px;bottom:8px;background:rgba(0,0,0,0.7);color:#fff;padding:3px 6px;border-radius:4px;font-size:12px;
+  }
+
+  .info{padding:12px;flex:1;display:flex;flex-direction:column;gap:8px;}
+  .title{
+    font-size:15px;font-weight:500;line-height:1.4;min-height:42px;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+  }
+
+  .stats{
+    display:grid;grid-template-columns:repeat(2,1fr);gap:6px;font-size:13px;color:#333;
+  }
+  .stats span{
+    background:#f7f8fa;padding:4px;border-radius:6px;text-align:center;
+  }
+
+  /* ========== 🔥 这里是你要优化的底部布局 ========== */
+  .author-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    font-size:12px;
+    color:#666;
+    padding-top:8px;
+    border-top:1px solid #f5f5f5;
+    gap: 6px;
+  }
+  .author-left{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    white-space:nowrap;
+  }
+  .author{
+    font-weight:500;color:#333;
+  }
+  .cart{
+    background:#ff4d4f;color:#fff;padding:2px 5px;border-radius:4px;font-size:10px;
+  }
+  .time{
+    white-space:nowrap;
+    color:#999;
+  }
+  /* =============================================== */
+
+  .pagination{
+    display:flex;align-items:center;justify-content:center;gap:10px;margin-top:20px;flex-wrap:wrap;
+  }
+  .page-btn{padding:6px 12px;border:1px solid #ddd;background:#fff;border-radius:6px;cursor:pointer}
+  .page-btn.active{background:#4096ff;color:#fff;border-color:#4096ff}
+  .jump-box{display:flex;align-items:center;gap:6px}
+  .jump-input{width:50px;padding:6px;text-align:center;border:1px solid #ddd;border-radius:6px}
+  .jump-btn{padding:6px 10px;border:1px solid #ddd;background:#fff;border-radius:6px;cursor:pointer}
+
+  .loading{text-align:center;padding:30px;color:#666}
+  @media (max-width:1400px){.video-grid{grid-template-columns:repeat(4,1fr)}}
+  @media (max-width:1100px){.video-grid{grid-template-columns:repeat(3,1fr)}}
+  @media (max-width:800px){.video-grid{grid-template-columns:repeat(2,1fr)}}
+  @media (max-width:500px){.video-grid{grid-template-columns:repeat(1,1fr)}}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="total-count" id="totalCount">加载中...</div>
+  </div>
+
+  <div class="top-bar">
+    <div class="search-box">
+      <input class="search-input" id="search" placeholder="视频更新时间2026年4月初" type="text">
+    </div>
+    <div class="filter-bar">
+      <button class="filter-btn active" data-sort="default">默认</button>
+      <button class="filter-btn" data-sort="like">点赞量</button>
+      <button class="filter-btn" data-sort="comment">评论量</button>
+      <button class="filter-btn" data-sort="collect">收藏量</button>
+      <button class="filter-btn" data-sort="share">分享量</button>
+      <button class="filter-btn" data-sort="time">发布时间</button>
+      <button class="filter-btn" data-sort="cart">购物车</button>
+    </div>
+  </div>
+
+  <div class="loading" id="tip">加载中...</div>
+  <div class="video-grid" id="list"></div>
+  <div class="pagination" id="pagination"></div>
+</div>
+
+<script>
+const CSV_URL = "https://raw.githubusercontent.com/liu3abc/my-video-data/main/个护data.csv";
+let allData = [];
+let currentPage = 1;
+const pageSize = 100;
+
+function formatNum(n) {
+  const num = Number(n) || 0;
+  return num >= 10000 ? (num / 10000).toFixed(1) + "万" : num;
+}
+
+function parseCSV(text) {
+  const lines = text.split(/\r?\n/).filter(line => line.trim());
+  if (!lines.length) return [];
+  const splitRow = (row) => {
+    const result = [];
+    let inQuotes = false;
+    let field = '';
+    for (let i = 0; i < row.length; i++) {
+      const c = row[i];
+      if (c === '"') {
+        if (inQuotes && row[i+1] === '"') { field += '"'; i++; }
+        else { inQuotes = !inQuotes; }
+      } else if (c === ',' && !inQuotes) {
+        result.push(field.trim().replace(/^"|"$/g, ''));
+        field = '';
+      } else {
+        field += c;
+      }
+    }
+    result.push(field.trim().replace(/^"|"$/g, ''));
+    return result;
+  };
+  const headers = splitRow(lines[0]);
+  const data = [];
+  for (let i = 1; i < lines.length; i++) {
+    const row = splitRow(lines[i]);
+    const obj = {};
+    headers.forEach((h, idx) => obj[h] = row[idx] ?? '');
+    data.push(obj);
+  }
+  return data;
+}
+
+function getValidList(data) {
+  return data.filter(item => {
+    const title = (item["作品标题"] || "").trim();
+    const author = (item["作品作者"] || "").trim();
+    const cover = (item["封面网址"] || "").trim();
+    if (!title || !author) return false;
+    if (title.includes("\\") || title.includes("first_time")) return false;
+    if (!cover.startsWith("http")) return false;
+    return true;
+  });
+}
+
+function sortData(type, data) {
+  let sorted = [...data];
+  switch(type) {
+    case "like": return sorted.sort((a,b) => Number(b.点赞量||0) - Number(a.点赞量||0));
+    case "comment": return sorted.sort((a,b) => Number(b.评论量||0) - Number(a.评论量||0));
+    case "collect": return sorted.sort((a,b) => Number(b.收藏量||0) - Number(a.收藏量||0));
+    case "share": return sorted.sort((a,b) => Number(b.分享量||0) - Number(a.分享量||0));
+    case "time": return sorted.sort((a,b) => new Date(b.发布时间||0) - new Date(a.发布时间||0));
+    case "cart": return sorted.sort((a,b) => {
+      const aCart = /是|true|1|有/.test(a.是否购物车) ? 1 : 0;
+      const bCart = /是|true|1|有/.test(b.是否购物车) ? 1 : 0;
+      return bCart - aCart;
+    });
+    default: return sorted;
+  }
+}
+
+function renderList(list) {
+  const dom = document.getElementById("list");
+  dom.innerHTML = list.map(item => {
+    const hasCart = /是|true|1|有/.test(String(item["是否购物车"]));
+    return `
+    <div class="video-card">
+      <a href="${item["作品网址"]}" target="_blank">
+        <div class="cover-box">
+          <img class="cover" src="${item["封面网址"]}" onerror="this.style.display='none'">
+          ${item["作品时长"] ? `<div class="duration">${item["作品时长"]}</div>` : ''}
+        </div>
+      </a>
+      <div class="info">
+        <div class="title">${item["作品标题"]}</div>
+        <div class="stats">
+          <span>👍 ${formatNum(item["点赞量"])}</span>
+          <span>💬 ${formatNum(item["评论量"])}</span>
+          <span>⭐ ${formatNum(item["收藏量"])}</span>
+          <span>🔄 ${formatNum(item["分享量"])}</span>
+        </div>
+
+        <!-- ========== 🔥 优化后的底部布局 ========== -->
+        <div class="author-row">
+          <div class="author-left">
+            <span class="author">${item["作品作者"]}</span>
+            ${hasCart ? '<span class="cart">购物车</span>' : ''}
+          </div>
+          <span class="time">${item["发布时间"]}</span>
+        </div>
+        <!-- ======================================= -->
+
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function renderPagination(total) {
+  const totalPage = Math.ceil(total / pageSize);
+  const wrap = document.getElementById("pagination");
+  if (totalPage <= 1) {
+    wrap.style.display = "none";
+    return;
+  }
+  wrap.style.display = "flex";
+  let html = '';
+  for (let i = 1; i <= totalPage; i++) {
+    html += `<button class="page-btn ${i===currentPage?'active':''}" data-page="${i}">${i}</button>`;
+  }
+  html += `
+  <div class="jump-box">
+    <input class="jump-input" id="jumpPage" type="number" min="1" max="${totalPage}" placeholder="页">
+    <button class="jump-btn">跳转</button>
+  </div>`;
+  wrap.innerHTML = html;
+
+  wrap.querySelectorAll(".page-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      currentPage = Number(btn.dataset.page);
+      refresh();
+    });
+  });
+  wrap.querySelector(".jump-btn").addEventListener("click", () => {
+    const val = document.getElementById("jumpPage").value;
+    const p = Number(val);
+    const totalPage = Math.ceil(getValidList(allData).length / pageSize);
+    if (p >=1 && p <= totalPage) {
+      currentPage = p;
+      refresh();
+    }
+  });
+}
+
+function refresh() {
+  document.getElementById("tip").style.display = "none";
+  const keyword = document.getElementById("search").value.toLowerCase();
+  const activeSort = document.querySelector(".filter-btn.active").dataset.sort;
+
+  let filtered = allData.filter(item => {
+    const title = (item["作品标题"] || "").toLowerCase();
+    return title.includes(keyword);
+  });
+
+  const sorted = sortData(activeSort, filtered);
+  const valid = getValidList(sorted);
+  const total = valid.length;
+  document.getElementById("totalCount").innerText = `总计：${total} 个视频`;
+
+  const totalPage = Math.ceil(total / pageSize);
+  if (currentPage > totalPage) currentPage = totalPage;
+  const start = (currentPage - 1) * pageSize;
+  const end = start + pageSize;
+  const pageData = valid.slice(start, end);
+
+  renderList(pageData);
+  renderPagination(total);
+}
+
+document.querySelectorAll(".filter-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    currentPage = 1;
+    refresh();
+  });
+});
+
+document.getElementById("search").addEventListener("input", () => {
+  currentPage = 1;
+  refresh();
+});
+
+fetch(CSV_URL)
+.then(async res => {
+  const blob = await res.blob();
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.readAsText(blob, 'UTF-8');
+  });
+})
+.then(text => {
+  allData = parseCSV(text);
+  refresh();
+})
+.catch(e => {
+  document.getElementById("tip").innerText = "加载失败";
+  document.getElementById("totalCount").innerText = "总计：0 个视频";
+});
+</script>
+</body>
+</html>
