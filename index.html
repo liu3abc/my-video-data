@@ -3,91 +3,102 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>视频库</title>
+<title>本地视频库</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,sans-serif}
   body{background:#f5f7fa;padding:20px}
   .container{max-width:1600px;margin:0 auto}
 
-  .header{
-    display:flex;justify-content:space-between;align-items:center;
-    margin-bottom:16px;
+  .header-search-row{
+    display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap;
   }
   .total-count{
     font-size:14px;color:#666;background:#fff;
-    padding:6px 12px;border-radius:8px;border:1px solid #eee;
+    padding:10px 16px;border-radius:10px;border:1px solid #eee;
+    white-space:nowrap;
   }
-
-  .top-bar{
-    display:flex;gap:16px;align-items:center;margin-bottom:16px;flex-wrap:wrap;
+  .search-wrap{
+    flex:1;min-width:300px;max-width:800px;
   }
-  .search-box{flex:1;min-width:280px}
   .search-input{
     width:100%;padding:10px 14px;border:1px solid #ddd;border-radius:10px;font-size:14px;outline:none;
   }
   .search-input:focus{border-color:#4096ff}
 
-  .filter-bar{display:flex;gap:8px;flex-wrap:wrap}
-  .filter-btn{
+  .filter-row{
+    display:flex;flex-direction:column;gap:8px;margin-bottom:16px;
+  }
+  .category-bar{
+    display:flex;gap:8px;flex-wrap:wrap;
+  }
+  .category-btn{
     padding:8px 12px;border:1px solid #ddd;background:#fff;border-radius:8px;cursor:pointer;font-size:14px;transition:0.2s;
   }
-  .filter-btn:hover{background:#f0f0f0}
-  .filter-btn.active{background:#4096ff;color:#fff;border-color:#4096ff}
+  .category-btn:hover{background:#f0f0f0}
+  .category-btn.active{background:#4096ff;color:#fff;border-color:#4096ff}
+
+  .sort-bar{
+    display:flex;gap:8px;flex-wrap:wrap;
+  }
+  .sort-btn{
+    padding:8px 12px;border:1px solid #ddd;background:#fff;border-radius:8px;cursor:pointer;font-size:14px;transition:0.2s;
+  }
+  .sort-btn:hover{background:#f0f0f0}
+  .sort-btn.active{background:#4096ff;color:#fff;border-color:#4096ff}
 
   .video-grid{
     display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:20px;
   }
   .video-card{
     background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.05);
-    height:100%;display:flex;flex-direction:column;
+    height:420px;display:flex;flex-direction:column;
   }
-  .cover-box{position:relative;width:100%;aspect-ratio:16/9;background:#eee}
+  .cover-box{
+    position:relative;width:100%;
+    height:240px;background:#eee;overflow:hidden;
+  }
   .cover{width:100%;height:100%;object-fit:cover}
   .duration{
     position:absolute;right:8px;bottom:8px;background:rgba(0,0,0,0.7);color:#fff;padding:3px 6px;border-radius:4px;font-size:12px;
   }
+  .sales-btn{
+    position:absolute;top:8px;right:8px;background:rgba(255,87,34,0.8);color:#fff;padding:3px 6px;border-radius:4px;font-size:12px;
+    cursor:pointer;text-decoration:none;transition:background 0.2s;
+  }
+  .sales-btn:hover{
+    background:rgba(255,87,34,1);
+  }
+  .download-btn{
+    position:absolute;top:32px;right:8px;background:rgba(0,0,0,0.6);color:#fff;padding:3px 6px;border-radius:4px;font-size:12px;
+    cursor:pointer;text-decoration:none;transition:background 0.2s;
+  }
+  .download-btn:hover{
+    background:rgba(0,0,0,0.8);
+  }
 
-  .info{padding:12px;flex:1;display:flex;flex-direction:column;gap:8px;}
+  .info{
+    padding:12px;flex:1;display:flex;flex-direction:column;gap:8px;
+    height:calc(100% - 240px);
+  }
   .title{
     font-size:15px;font-weight:500;line-height:1.4;min-height:42px;
     display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
   }
-
   .stats{
     display:grid;grid-template-columns:repeat(2,1fr);gap:6px;font-size:13px;color:#333;
   }
   .stats span{
     background:#f7f8fa;padding:4px;border-radius:6px;text-align:center;
   }
-
-  /* ========== 🔥 这里是你要优化的底部布局 ========== */
   .author-row{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    font-size:12px;
-    color:#666;
-    padding-top:8px;
-    border-top:1px solid #f5f5f5;
-    gap: 6px;
+    display:flex;align-items:center;justify-content:space-between;
+    font-size:12px;color:#666;padding-top:8px;border-top:1px solid #f5f5f5;gap:6px;
+    margin-top:auto;
   }
-  .author-left{
-    display:flex;
-    align-items:center;
-    gap:6px;
-    white-space:nowrap;
-  }
-  .author{
-    font-weight:500;color:#333;
-  }
-  .cart{
-    background:#ff4d4f;color:#fff;padding:2px 5px;border-radius:4px;font-size:10px;
-  }
-  .time{
-    white-space:nowrap;
-    color:#999;
-  }
-  /* =============================================== */
+  .author-left{display:flex;align-items:center;gap:6px;white-space:nowrap;}
+  .author{font-weight:500;color:#333;}
+  .cart{background:#ff4d4f;color:#fff;padding:2px 5px;border-radius:4px;font-size:10px;}
+  .time{white-space:nowrap;color:#999;}
 
   .pagination{
     display:flex;align-items:center;justify-content:center;gap:10px;margin-top:20px;flex-wrap:wrap;
@@ -107,22 +118,23 @@
 </head>
 <body>
 <div class="container">
-  <div class="header">
+  <div class="header-search-row">
+    <div class="search-wrap">
+      <input class="search-input" id="search" placeholder="搜索标题或作者" type="text">
+    </div>
     <div class="total-count" id="totalCount">加载中...</div>
   </div>
 
-  <div class="top-bar">
-    <div class="search-box">
-      <input class="search-input" id="search" placeholder="视频更新时间2026年4月初" type="text">
-    </div>
-    <div class="filter-bar">
-      <button class="filter-btn active" data-sort="default">默认</button>
-      <button class="filter-btn" data-sort="like">点赞量</button>
-      <button class="filter-btn" data-sort="comment">评论量</button>
-      <button class="filter-btn" data-sort="collect">收藏量</button>
-      <button class="filter-btn" data-sort="share">分享量</button>
-      <button class="filter-btn" data-sort="time">发布时间</button>
-      <button class="filter-btn" data-sort="cart">购物车</button>
+  <div class="filter-row">
+    <div class="category-bar" id="categoryBar"></div>
+    <div class="sort-bar">
+      <button class="sort-btn active" data-sort="default">默认</button>
+      <button class="sort-btn" data-sort="like">点赞量</button>
+      <button class="sort-btn" data-sort="comment">评论量</button>
+      <button class="sort-btn" data-sort="collect">收藏量</button>
+      <button class="sort-btn" data-sort="share">分享量</button>
+      <button class="sort-btn" data-sort="time">发布时间</button>
+      <button class="sort-btn" data-sort="cart">购物车</button>
     </div>
   </div>
 
@@ -132,10 +144,11 @@
 </div>
 
 <script>
-const CSV_URL = "https://raw.githubusercontent.com/liu3abc/my-video-data/main/个护data.csv";
+const CSV_URL = "https://raw.githubusercontent.com/liu3abc/my-video-data/main/汇总.csv";
 let allData = [];
 let currentPage = 1;
 const pageSize = 100;
+let currentCategory = "all";
 
 function formatNum(n) {
   const num = Number(n) || 0;
@@ -187,6 +200,38 @@ function getValidList(data) {
   });
 }
 
+// 这里已去掉「未分类」
+function getUniqueCategories(data) {
+  const categories = new Set();
+  data.forEach(item => {
+    const cat = (item["类目"] || "").trim();
+    if (cat && cat !== "未分类") {
+      categories.add(cat);
+    }
+  });
+  return Array.from(categories).sort();
+}
+
+function renderCategoryBar(data) {
+  const bar = document.getElementById("categoryBar");
+  const cats = getUniqueCategories(data);
+  let html = `<button class="category-btn active" data-category="all">全类目</button>`;
+  cats.forEach(cat => {
+    html += `<button class="category-btn" data-category="${cat}">${cat}</button>`;
+  });
+  bar.innerHTML = html;
+
+  bar.querySelectorAll(".category-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      bar.querySelectorAll(".category-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      currentCategory = btn.dataset.category;
+      currentPage = 1;
+      refresh();
+    });
+  });
+}
+
 function sortData(type, data) {
   let sorted = [...data];
   switch(type) {
@@ -208,11 +253,24 @@ function renderList(list) {
   const dom = document.getElementById("list");
   dom.innerHTML = list.map(item => {
     const hasCart = /是|true|1|有/.test(String(item["是否购物车"]));
+    
+    const salesUrl = (item["销售额网址"] || "").trim();
+    const salesBtnHtml = salesUrl && salesUrl.startsWith("http") 
+      ? `<a href="${salesUrl}" target="_blank" class="sales-btn">销售额</a>` 
+      : '';
+
+    const videoUrl = (item["视频源网址"] || "").trim();
+    const downloadBtnHtml = videoUrl && videoUrl.startsWith("http")
+      ? `<a href="${videoUrl}" target="_blank" class="download-btn">📥 下载</a>`
+      : '';
+
     return `
     <div class="video-card">
       <a href="${item["作品网址"]}" target="_blank">
         <div class="cover-box">
           <img class="cover" src="${item["封面网址"]}" onerror="this.style.display='none'">
+          ${salesBtnHtml}
+          ${downloadBtnHtml}
           ${item["作品时长"] ? `<div class="duration">${item["作品时长"]}</div>` : ''}
         </div>
       </a>
@@ -224,8 +282,6 @@ function renderList(list) {
           <span>⭐ ${formatNum(item["收藏量"])}</span>
           <span>🔄 ${formatNum(item["分享量"])}</span>
         </div>
-
-        <!-- ========== 🔥 优化后的底部布局 ========== -->
         <div class="author-row">
           <div class="author-left">
             <span class="author">${item["作品作者"]}</span>
@@ -233,8 +289,6 @@ function renderList(list) {
           </div>
           <span class="time">${item["发布时间"]}</span>
         </div>
-        <!-- ======================================= -->
-
       </div>
     </div>`;
   }).join("");
@@ -278,32 +332,40 @@ function renderPagination(total) {
 
 function refresh() {
   document.getElementById("tip").style.display = "none";
-  const keyword = document.getElementById("search").value.toLowerCase();
-  const activeSort = document.querySelector(".filter-btn.active").dataset.sort;
+  const keyword = document.getElementById("search").value.toLowerCase().trim();
+  const activeSort = document.querySelector(".sort-btn.active").dataset.sort;
 
   let filtered = allData.filter(item => {
     const title = (item["作品标题"] || "").toLowerCase();
-    return title.includes(keyword);
+    const author = (item["作品作者"] || "").toLowerCase();
+    return title.includes(keyword) || author.includes(keyword);
   });
 
-  const sorted = sortData(activeSort, filtered);
-  const valid = getValidList(sorted);
-  const total = valid.length;
+  if (currentCategory !== "all") {
+    filtered = filtered.filter(item => {
+      const cat = (item["类目"] || "").trim();
+      return cat === currentCategory && cat !== "未分类";
+    });
+  }
+
+  const valid = getValidList(filtered);
+  const sorted = sortData(activeSort, valid);
+  const total = sorted.length;
   document.getElementById("totalCount").innerText = `总计：${total} 个视频`;
 
   const totalPage = Math.ceil(total / pageSize);
   if (currentPage > totalPage) currentPage = totalPage;
   const start = (currentPage - 1) * pageSize;
   const end = start + pageSize;
-  const pageData = valid.slice(start, end);
+  const pageData = sorted.slice(start, end);
 
   renderList(pageData);
   renderPagination(total);
 }
 
-document.querySelectorAll(".filter-btn").forEach(btn => {
+document.querySelectorAll(".sort-btn").forEach(btn => {
   btn.addEventListener("click", () => {
-    document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".sort-btn").forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
     currentPage = 1;
     refresh();
@@ -326,6 +388,7 @@ fetch(CSV_URL)
 })
 .then(text => {
   allData = parseCSV(text);
+  renderCategoryBar(allData);
   refresh();
 })
 .catch(e => {
