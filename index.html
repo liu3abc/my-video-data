@@ -37,6 +37,16 @@
   .category-btn:hover{background:#f0f0f0}
   .category-btn.active{background:#4096ff;color:#fff;border-color:#4096ff}
 
+  /* 新增购物车筛选栏样式 */
+  .cart-filter-bar{
+    display:flex;gap:8px;flex-wrap:wrap;
+  }
+  .cart-filter-btn{
+    padding:8px 12px;border:1px solid #ddd;background:#fff;border-radius:8px;cursor:pointer;font-size:14px;transition:0.2s;
+  }
+  .cart-filter-btn:hover{background:#f0f0f0}
+  .cart-filter-btn.active{background:#ff4d4f;color:#fff;border-color:#ff4d4f}
+
   .sort-bar{
     display:flex;gap:8px;flex-wrap:wrap;
   }
@@ -120,13 +130,19 @@
 <div class="container">
   <div class="header-search-row">
     <div class="search-wrap">
-      <input class="search-input" id="search" placeholder="搜索标题或作者   <数据更新于26年4月份>" type="text">
+      <input class="search-input" id="search" placeholder="搜索标题或作者" type="text">
     </div>
     <div class="total-count" id="totalCount">加载中...</div>
   </div>
 
   <div class="filter-row">
     <div class="category-bar" id="categoryBar"></div>
+    <!-- 新增购物车筛选栏 -->
+    <div class="cart-filter-bar" id="cartFilterBar">
+      <button class="cart-filter-btn active" data-cart="all">全部视频</button>
+      <button class="cart-filter-btn" data-cart="has">包含购物车</button>
+      <button class="cart-filter-btn" data-cart="none">无购物车</button>
+    </div>
     <div class="sort-bar">
       <button class="sort-btn active" data-sort="default">默认</button>
       <button class="sort-btn" data-sort="like">点赞量</button>
@@ -134,7 +150,6 @@
       <button class="sort-btn" data-sort="collect">收藏量</button>
       <button class="sort-btn" data-sort="share">分享量</button>
       <button class="sort-btn" data-sort="time">发布时间</button>
-      <button class="sort-btn" data-sort="cart">购物车</button>
     </div>
   </div>
 
@@ -144,11 +159,13 @@
 </div>
 
 <script>
-const CSV_URL = "https://cdn.jsdelivr.net/gh/liu3abc/my-video-data@main/hz.csv";
+const CSV_URL = "https://raw.githubusercontent.com/liu3abc/my-video-data/main/汇总.csv";
 let allData = [];
 let currentPage = 1;
 const pageSize = 100;
 let currentCategory = "all";
+// 新增购物车筛选状态
+let currentCartFilter = "all";
 
 function formatNum(n) {
   const num = Number(n) || 0;
@@ -232,6 +249,20 @@ function renderCategoryBar(data) {
   });
 }
 
+// 初始化购物车筛选事件
+function initCartFilter() {
+  const bar = document.getElementById("cartFilterBar");
+  bar.querySelectorAll(".cart-filter-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      bar.querySelectorAll(".cart-filter-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      currentCartFilter = btn.dataset.cart;
+      currentPage = 1;
+      refresh();
+    });
+  });
+}
+
 function sortData(type, data) {
   let sorted = [...data];
   switch(type) {
@@ -240,13 +271,18 @@ function sortData(type, data) {
     case "collect": return sorted.sort((a,b) => Number(b.收藏量||0) - Number(a.收藏量||0));
     case "share": return sorted.sort((a,b) => Number(b.分享量||0) - Number(a.分享量||0));
     case "time": return sorted.sort((a,b) => new Date(b.发布时间||0) - new Date(a.发布时间||0));
-    case "cart": return sorted.sort((a,b) => {
-      const aCart = /是|true|1|有/.test(a.是否购物车) ? 1 : 0;
-      const bCart = /是|true|1|有/.test(b.是否购物车) ? 1 : 0;
-      return bCart - aCart;
-    });
     default: return sorted;
   }
+}
+
+// 购物车筛选逻辑
+function filterByCart(data) {
+  if (currentCartFilter === "all") return data;
+  
+  return data.filter(item => {
+    const hasCart = /是|true|1|有/.test(String(item["是否购物车"]));
+    return currentCartFilter === "has" ? hasCart : !hasCart;
+  });
 }
 
 function renderList(list) {
@@ -335,12 +371,14 @@ function refresh() {
   const keyword = document.getElementById("search").value.toLowerCase().trim();
   const activeSort = document.querySelector(".sort-btn.active").dataset.sort;
 
+  // 1. 关键词筛选
   let filtered = allData.filter(item => {
     const title = (item["作品标题"] || "").toLowerCase();
     const author = (item["作品作者"] || "").toLowerCase();
     return title.includes(keyword) || author.includes(keyword);
   });
 
+  // 2. 类目筛选
   if (currentCategory !== "all") {
     filtered = filtered.filter(item => {
       const cat = (item["类目"] || "").trim();
@@ -348,11 +386,20 @@ function refresh() {
     });
   }
 
+  // 3. 有效性筛选
   const valid = getValidList(filtered);
-  const sorted = sortData(activeSort, valid);
+  
+  // 4. 购物车筛选（新增）
+  const cartFiltered = filterByCart(valid);
+  
+  // 5. 排序
+  const sorted = sortData(activeSort, cartFiltered);
+  
+  // 统计总数
   const total = sorted.length;
   document.getElementById("totalCount").innerText = `总计：${total} 个视频`;
 
+  // 分页处理
   const totalPage = Math.ceil(total / pageSize);
   if (currentPage > totalPage) currentPage = totalPage;
   const start = (currentPage - 1) * pageSize;
@@ -389,6 +436,7 @@ fetch(CSV_URL)
 .then(text => {
   allData = parseCSV(text);
   renderCategoryBar(allData);
+  initCartFilter(); // 初始化购物车筛选
   refresh();
 })
 .catch(e => {
