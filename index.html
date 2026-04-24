@@ -65,6 +65,7 @@
   .cover-box{
     position:relative;width:100%;
     height:240px;background:#eee;overflow:hidden;
+    cursor: pointer; /* 鼠标悬浮显示手型，提示可点击 */
   }
   .cover{width:100%;height:100%;object-fit:cover}
   .duration{
@@ -73,13 +74,15 @@
   .sales-btn{
     position:absolute;top:8px;right:8px;background:rgba(255,87,34,0.8);color:#fff;padding:3px 6px;border-radius:4px;font-size:12px;
     cursor:pointer;text-decoration:none;transition:background 0.2s;
+    z-index: 2; /* 提高层级，避免被封面点击事件覆盖 */
   }
   .sales-btn:hover{
     background:rgba(255,87,34,1);
   }
   .download-btn{
-    position:absolute;top:32px;right:8px;background:rgba(0,0,0,0.6);color:#fff;padding:3px 6px;border-radius:4px;font-size:12px;
+    position:absolute;top:32px;right:8px;background:rgba(0,0,0,0.6);color:#fff;padding:3px 6px;border-radius:100px;font-size:12px;
     cursor:pointer;text-decoration:none;transition:background 0.2s;
+    z-index: 2; /* 提高层级，避免被封面点击事件覆盖 */
   }
   .download-btn:hover{
     background:rgba(0,0,0,0.8);
@@ -141,6 +144,14 @@
   @media (max-width:1100px){.video-grid{grid-template-columns:repeat(3,1fr)}}
   @media (max-width:800px){.video-grid{grid-template-columns:repeat(2,1fr)}}
   @media (max-width:500px){.video-grid{grid-template-columns:repeat(1,1fr)}}
+  
+  /* 移除冗余的card-link样式（外层a标签已删除） */
+  /* 卡片hover效果 */
+  .video-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+    transition: all 0.2s;
+  }
 </style>
 </head>
 <body>
@@ -175,7 +186,7 @@
 </div>
 
 <script>
-const CSV_URL = "https://cdn.jsdelivr.net/gh/liu3abc/my-video-data@main/%E6%B1%87%E6%80%BB.csv";
+const CSV_URL = "https://cdn.jsdelivr.net/gh/liu3abc/my-video-data@main/汇总.csv";
 let allData = [];
 let currentPage = 1;
 const pageSize = 100;
@@ -303,51 +314,76 @@ function filterByCart(data) {
   });
 }
 
+// 封面跳转函数（独立封装）
+function jumpToVideo(url) {
+  if (url && url.startsWith("http")) {
+    window.open(url, "_blank");
+  }
+}
+
 function renderList(list) {
   const dom = document.getElementById("list");
   dom.innerHTML = list.map(item => {
     const hasCart = /是|true|1|有/.test(String(item["是否购物车"]));
     const salesAmount = formatSales(item["销售额"]);
+    const videoUrl = item["作品网址"]; // 提取作品网址，用于封面点击跳转
     
     const salesUrl = (item["销售额网址"] || "").trim();
     const salesBtnHtml = salesUrl && salesUrl.startsWith("http") 
       ? `<a href="${salesUrl}" target="_blank" class="sales-btn">销售额</a>` 
       : '';
 
-    const videoUrl = (item["视频源网址"] || "").trim();
-    const downloadBtnHtml = videoUrl && videoUrl.startsWith("http")
-      ? `<a href="${videoUrl}" target="_blank" class="download-btn">📥 下载</a>`
+    const downloadUrl = (item["视频源网址"] || "").trim();
+    const downloadBtnHtml = downloadUrl && downloadUrl.startsWith("http")
+      ? `<a href="${downloadUrl}" target="_blank" class="download-btn">📥 下载</a>`
       : '';
 
+    // 关键修改：
+    // 1. 移除外层card-link a标签（避免跳转冲突）
+    // 2. 移除cover-box的内联onclick
+    // 3. 给cover-box添加data-url存储视频链接，用于事件委托
     return `
-    <div class="video-card">
-      <a href="${item["作品网址"]}" target="_blank">
-        <div class="cover-box">
+      <div class="video-card">
+        <div class="cover-box" data-url="${videoUrl}">
           <img class="cover" src="${item["封面网址"]}" onerror="this.style.display='none'">
           ${salesBtnHtml}
           ${downloadBtnHtml}
           ${item["作品时长"] ? `<div class="duration">${item["作品时长"]}</div>` : ''}
         </div>
-      </a>
-      <div class="info">
-        <div class="title">${item["作品标题"]}</div>
-        <div class="sales-amount">${salesAmount}</div>
-        <div class="stats">
-          <span>👍 ${formatNum(item["点赞量"])}</span>
-          <span>💬 ${formatNum(item["评论量"])}</span>
-          <span>⭐ ${formatNum(item["收藏量"])}</span>
-          <span>🔄 ${formatNum(item["分享量"])}</span>
-        </div>
-        <div class="author-row">
-          <div class="author-left">
-            <span class="author">${item["作品作者"]}</span>
-            ${hasCart ? '<span class="cart">购物车</span>' : ''}
+        <div class="info">
+          <div class="title">${item["作品标题"]}</div>
+          <div class="sales-amount">${salesAmount}</div>
+          <div class="stats">
+            <span>👍 ${formatNum(item["点赞量"])}</span>
+            <span>💬 ${formatNum(item["评论量"])}</span>
+            <span>⭐ ${formatNum(item["收藏量"])}</span>
+            <span>🔄 ${formatNum(item["分享量"])}</span>
           </div>
-          <span class="time">${item["发布时间"]}</span>
+          <div class="author-row">
+            <div class="author-left">
+              <span class="author">${item["作品作者"]}</span>
+              ${hasCart ? '<span class="cart">购物车</span>' : ''}
+            </div>
+            <span class="time">${item["发布时间"]}</span>
+          </div>
         </div>
-      </div>
-    </div>`;
+      </div>`;
   }).join("");
+
+  // 核心优化：事件委托实现封面点击跳转
+  // 监听视频列表容器的点击事件，委托到cover-box
+  dom.addEventListener('click', (e) => {
+    // 找到点击元素的最近cover-box父元素
+    const coverBox = e.target.closest('.cover-box');
+    // 排除销售额按钮和下载按钮的点击（避免点按钮时触发封面跳转）
+    const isSalesBtn = e.target.closest('.sales-btn');
+    const isDownloadBtn = e.target.closest('.download-btn');
+    
+    if (coverBox && !isSalesBtn && !isDownloadBtn) {
+      const videoUrl = coverBox.dataset.url;
+      jumpToVideo(videoUrl); // 执行跳转
+    }
+  });
 }
 
 function renderPagination(total) {
